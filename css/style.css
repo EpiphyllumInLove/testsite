@@ -63,10 +63,18 @@ body {
     font-size: 0.95rem;
 }
 
-.nav-links a:hover,
-.nav-links a.active {
-    background-color: rgba(255, 255, 255, 0.2);
+.nav-links a:hover {
+    background-color: rgba(255, 255, 255, 0.15);
     color: white;
+}
+
+/* 当前页面高亮：根据 body 类名匹配对应导航项 */
+.page-about .nav-links a[href="/"],
+.page-works .nav-links a[href="/works.html"],
+.page-feedback .nav-links a[href="/feedback.html"] {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    font-weight: 600;
 }
 
 .nav-toggle {

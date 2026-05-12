@@ -19,7 +19,7 @@
 ├── works.html              # 作品列表页
 ├── feedback.html           # 反馈页
 ├── work.html               # 作品详情页（通用框架）
-├── _redirects              # Cloudflare Pages 重写规则
+  ├── (无 _redirects)          # 直接使用 .html 后缀路径
 ├── README.md               # 使用说明书（本文件）
 ├── .gitignore
 ├── css/
@@ -123,7 +123,7 @@ API.saveConfig('你的GitHub用户名', '你的仓库名', '你的Personal Acces
    - **构建输出目录**: `/`
 5. 点击 **Save and Deploy**
 
-> ⚡ `_redirects` 文件已内置，Cloudflare Pages 会自动读取它，让你可以直接访问 `/works`、`/feedback` 等路径（自动映射到对应 HTML 文件）。
+> 注意：本版本直接使用 `.html` 后缀路径（如 `/works.html`），无需 `_redirects` 重写规则，在任何静态托管平台都兼容。
 
 #### 方法二：手动上传
 
