@@ -1,0 +1,7 @@
+# Cloudflare Pages 重定向规则
+# 将无后缀路径映射到对应HTML文件
+
+/works          /works.html
+/feedback       /feedback.html
+/work           /work.html
+/work.html      /work.html  200

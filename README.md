@@ -2,16 +2,6 @@
 
 一个专为个人汉化者设计的静态资源站模板，可部署到 **Cloudflare Pages** 或 **GitHub Pages**。
 
-> ⚠️ **重要：不要直接双击打开 index.html！**
->
-> 本网站使用 `fetch()` 加载页面片段和作品文件。**浏览器禁止在 `file://` 协议下使用 fetch**，直接双击打开会报 `Failed to fetch` 错误。
->
-> ✅ **请使用以下任一方式访问：**
-> 1. **部署到线上**（推荐）：推送到 GitHub → 部署到 Cloudflare Pages / GitHub Pages
-> 2. **本地服务器预览**：运行 `python3 -m http.server 8080` 然后访问 `http://localhost:8080`
->
-> 详见下方 [快速开始](#-快速开始)
-
 ## ✨ 功能特性
 
 - 📄 **介绍页** — 展示个人信息、网站须知、社交媒体链接
@@ -25,22 +15,21 @@
 
 ```
 /
-├── index.html              # 主入口
+├── index.html              # 介绍页（首页）
+├── works.html              # 作品列表页
+├── feedback.html           # 反馈页
+├── work.html               # 作品详情页（通用框架）
+├── _redirects              # Cloudflare Pages 重写规则
 ├── README.md               # 使用说明书（本文件）
 ├── .gitignore
 ├── css/
 │   └── style.css           # 全局样式
 ├── js/
-│   ├── marked.min.js       # Markdown 渲染库（from CDN）
-│   ├── router.js           # 前端路由（页面切换逻辑）
-│   └── api.js              # GitHub API（反馈提交功能）
-├── pages/
-│   ├── about.html          # 介绍页
-│   ├── works.html          # 作品页
-│   └── feedback.html       # 反馈页
+│   ├── marked.min.js       # Markdown 渲染库
+│   └── api.js              # GitHub API（反馈提交）
 ├── works/                  # 作品 Markdown 文件夹
 │   ├── example.md          # 示例作品
-│   └── another.md          # 另一示例作品
+│   └── another.md          # 示例作品2
 └── works-list.json         # 作品列表配置文件
 ```
 
@@ -133,6 +122,8 @@ API.saveConfig('你的GitHub用户名', '你的仓库名', '你的Personal Acces
    - **构建命令**: 留空（纯静态）
    - **构建输出目录**: `/`
 5. 点击 **Save and Deploy**
+
+> ⚡ `_redirects` 文件已内置，Cloudflare Pages 会自动读取它，让你可以直接访问 `/works`、`/feedback` 等路径（自动映射到对应 HTML 文件）。
 
 #### 方法二：手动上传
 
@@ -234,17 +225,19 @@ A: 请确保 `works-list.json` 文件存在且格式正确。
 A: 检查是否已在浏览器控制台配置了 GitHub Token，或者直接到 GitHub Issues 页面手动提交。
 
 **Q: 如何在本地预览？**
-A: 由于浏览器安全策略，直接打开 `index.html` 可能无法正常加载页面。请使用本地服务器：
+A: 由于浏览器安全策略（CORS），直接双击 `index.html` 可能无法正常加载作品列表。请使用本地服务器：
 
 ```bash
-# 使用 Python
+# 使用 Python 3
 python3 -m http.server 8000
 
 # 或使用 Node.js 的 serve
 npx serve .
 ```
 
-然后访问 `http://localhost:8000`。
+然后访问 `http://localhost:8000`（介绍页）或 `http://localhost:8000/works`（作品页）。
+
+> 注意：`_redirects` 仅在 Cloudflare Pages 上生效。本地预览时请直接访问 `.html` 文件路径（如 `/works.html`）。
 
 **Q: 是否支持搜索功能？**
 A: 当前版本为轻量设计，未内置搜索。后续可以考虑接入第三方搜索如 Algolia DocSearch。

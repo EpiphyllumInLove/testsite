@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人汉化资源站 - 作品</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-works">
+    <!-- 顶部导航栏 -->
+    <header class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="/">汉化资源站</a>
+            </div>
+            <nav class="nav-links">
+                <a href="/">介绍</a>
+                <a href="/works" class="active">作品</a>
+                <a href="/feedback">反馈</a>
+            </nav>
+            <button class="nav-toggle" onclick="toggleMenu()">☰</button>
+        </div>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="container">
+        <div class="works-section">
+            <div class="page-header">
+                <h1>汉化作品</h1>
+                <p>点击作品卡片查看详情和下载链接</p>
+            </div>
+            <div id="works-grid" class="works-grid">
+                <div class="loading">加载作品列表中...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 个人汉化资源站 | 由 Cloudflare Pages 强力驱动</p>
+        </div>
+    </footer>
+
+    <script src="js/marked.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        // 移动端菜单切换
+        function toggleMenu() {
+            document.querySelector('.nav-links').classList.toggle('show');
+        }
+
+        // 加载作品列表并渲染卡片
+        (async function() {
+            const grid = document.getElementById('works-grid');
+            try {
+                const resp = await fetch('works-list.json');
+                if (!resp.ok) throw new Error('作品列表加载失败');
+                const works = await resp.json();
+
+                if (!works || works.length === 0) {
+                    grid.innerHTML = '<div class="empty-state"><p>暂无作品，敬请期待~</p></div>';
+                    return;
+                }
+
+                grid.innerHTML = '';
+                works.forEach(work => {
+                    const card = document.createElement('div');
+                    card.className = 'work-card';
+                    card.onclick = () => {
+                        window.location.href = 'work.html?id=' + encodeURIComponent(work.id);
+                    };
+
+                    const imgSrc = work.image || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200"%3E%3Crect fill="%23f0f0f0" width="400" height="200"/%3E%3Ctext fill="%23ccc" font-family="Arial" font-size="20" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3E暂无封面%3C/text%3E%3C/svg%3E';
+
+                    card.innerHTML = `
+                        <img class="work-card-image" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(work.title)}" loading="lazy" onerror="this.src='data:image/svg+xml,%253Csvg xmlns=%2522http://www.w3.org/2000/svg%2522 width=%2522400%2522 height=%2522200%2522 viewBox=%25220 0 400 200%2522%253E%253Crect fill=%2522%2523f0f0f0%2522 width=%2522400%2522 height=%2522200%2522/%253E%253Ctext fill=%2522%2523ccc%2522 font-family=%2522Arial%2522 font-size=%252220%2522 x=%252250%2525%2522 y=%252250%2525%2522 dominant-baseline=%2522middle%2522 text-anchor=%2522middle%2522%253E暂无封面%253C/text%253E%253C/svg%253E'">
+                        <div class="work-card-content">
+                            <div class="work-card-title">${escapeHtml(work.title)}</div>
+                            ${work.desc ? `<div class="work-card-desc">${escapeHtml(work.desc)}</div>` : ''}
+                            ${work.tags && work.tags.length ? `
+                                <div class="work-card-tags">
+                                    ${work.tags.map(t => `<span class="work-card-tag">${escapeHtml(t)}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                grid.innerHTML = `<div class="empty-state"><p>加载失败：${e.message}</p></div>`;
+            }
+        })();
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
