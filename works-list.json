@@ -1,0 +1,20 @@
+[
+    {
+        "id": "example-game",
+        "title": "示例汉化作品",
+        "file": "example.md",
+        "image": "https://picsum.photos/seed/example/400/200",
+        "desc": "这是一个示例作品，展示作品卡片的效果。包含汉化说明、下载链接等。",
+        "date": "2024-01-15",
+        "tags": ["RPG", "PC", "完全汉化"]
+    },
+    {
+        "id": "another-work",
+        "title": "另一个汉化作品",
+        "file": "another.md",
+        "image": "https://picsum.photos/seed/another/400/200",
+        "desc": "这是另一个作品的简要描述。",
+        "date": "2024-02-01",
+        "tags": ["文字冒险", "手机"]
+    }
+]
