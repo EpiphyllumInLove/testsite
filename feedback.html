@@ -3,15 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>妖精之里 - 反馈</title>
+    <title>个人汉化资源站 - 反馈</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* 配置面板样式 */
+        .config-panel {
+            background: #f0f4ff;
+            border: 1px solid #c8d6f7;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .config-panel h3 {
+            color: #3b5bdb;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+        .config-panel p {
+            color: #555;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        .config-panel .config-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .config-panel .config-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #c8d6f7;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .config-panel .config-row input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .config-btn {
+            padding: 10px 24px;
+            background: #3b5bdb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .config-btn:hover {
+            background: #2b4bcc;
+        }
+        .config-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .config-status {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .config-status.success {
+            background: #d3f0df;
+            color: #1a7d3a;
+        }
+        .config-status.error {
+            background: #fde8e8;
+            color: #c0392b;
+        }
+        .config-status.hidden {
+            display: none;
+        }
+        .config-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+        .config-badge.ready {
+            background: #27ae60;
+            color: white;
+        }
+        .config-badge.pending {
+            background: #f39c12;
+            color: white;
+        }
+        .issues-link {
+            display: inline-block;
+            margin-top: 12px;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .issues-link:hover {
+            text-decoration: underline;
+        }
+        .hint-small {
+            color: #999;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+    </style>
 </head>
 <body class="page-feedback">
     <!-- 顶部导航栏 -->
     <header class="navbar">
         <div class="container">
             <div class="nav-brand">
-                <a href="/">花林妖精个人网站</a>
+                <a href="/">汉化资源站</a>
             </div>
             <nav class="nav-links">
                 <a href="/">介绍</a>
@@ -26,8 +130,27 @@
     <main class="container">
         <div class="feedback-section">
             <div class="feedback-card">
-                <h1>提交反馈（还没做完捏）</h1>
+                <h1>提交反馈</h1>
                 <p class="subtitle">发现汉化问题或有建议？请填写下方表单，我会尽快处理。</p>
+
+                <!-- 配置引导面板 -->
+                <div id="config-panel" class="config-panel">
+                    <h3>🔑 首次使用：配置 GitHub 连接</h3>
+                    <p>反馈将通过 GitHub Issues 提交到仓库。只需配置一次（数据保存在你的浏览器中），以后无需重复操作。</p>
+                    
+                    <div class="config-row">
+                        <input type="text" id="cfg-owner" placeholder="GitHub 用户名" value="">
+                        <input type="text" id="cfg-repo" placeholder="仓库名" value="">
+                    </div>
+                    <div class="config-row">
+                        <input type="password" id="cfg-token" placeholder="Personal Access Token（需 public_repo 权限）">
+                        <button class="config-btn" id="cfg-save-btn">保存配置</button>
+                    </div>
+                    <div class="hint-small">
+                        💡 如何获取 Token？<a href="https://github.com/settings/tokens" target="_blank">点此生成</a> → 选 public_repo 权限 → 生成后复制粘贴到上方
+                    </div>
+                    <div id="config-status" class="config-status hidden"></div>
+                </div>
 
                 <form id="feedback-form">
                     <div class="form-group">
@@ -63,8 +186,8 @@
 
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
                     <p style="color: #888; font-size: 0.85rem;">
-                        💡 提示：反馈将通过 GitHub Issues 提交到仓库。如提交失败，你也可以直接前往 
-                        <a href="#" target="_blank" style="color: #667eea;">GitHub Issues 页面</a> 提交。
+                        💡 所有反馈将通过 GitHub Issues 提交至仓库。你也可以直接访问 
+                        <a id="issues-link" href="#" target="_blank" style="color: #667eea;">GitHub Issues 页面</a> 提交。
                     </p>
                 </div>
             </div>
@@ -74,7 +197,7 @@
     <!-- 页脚 -->
     <footer class="footer">
         <div class="container">
-            <p>&copy; 花林妖精个人汉化 | 网站为花林妖精所有</p>
+            <p>&copy; 2024 个人汉化资源站 | 由 Cloudflare Pages 强力驱动</p>
         </div>
     </footer>
 
@@ -85,7 +208,87 @@
             document.querySelector('.nav-links').classList.toggle('show');
         }
 
-        // 反馈表单处理
+        // ====== 配置管理 ======
+        const configPanel = document.getElementById('config-panel');
+        const cfgOwner = document.getElementById('cfg-owner');
+        const cfgRepo = document.getElementById('cfg-repo');
+        const cfgToken = document.getElementById('cfg-token');
+        const cfgSaveBtn = document.getElementById('cfg-save-btn');
+        const cfgStatus = document.getElementById('config-status');
+        const issuesLink = document.getElementById('issues-link');
+
+        // 如果 js/api.js 中配了默认 owner/repo，自动填入
+        if (cfgOwner) {
+            // 从 API 实例读取已保存的值
+            const saved = localStorage.getItem('github_config');
+            if (saved) {
+                try {
+                    const c = JSON.parse(saved);
+                    if (c.owner) cfgOwner.value = c.owner;
+                    if (c.repo) cfgRepo.value = c.repo;
+                } catch (e) {}
+            }
+        }
+
+        // 更新 Issues 链接
+        function updateIssuesLink() {
+            const url = API.getIssuesUrl();
+            if (url) {
+                issuesLink.href = url;
+                issuesLink.textContent = 'GitHub Issues 页面';
+            } else {
+                issuesLink.href = '#';
+                issuesLink.textContent = 'GitHub Issues（需先配置）';
+            }
+        }
+
+        // 保存配置
+        cfgSaveBtn.addEventListener('click', () => {
+            const owner = cfgOwner.value.trim();
+            const repo = cfgRepo.value.trim();
+            const token = cfgToken.value.trim();
+
+            if (!owner || !repo || !token) {
+                showConfigStatus('请填写完整的用户名、仓库名和 Token', 'error');
+                return;
+            }
+
+            API.saveConfig(owner, repo, token);
+            showConfigStatus('✅ 配置已保存！现在可以正常提交反馈了。', 'success');
+            cfgToken.value = '';
+            updateIssuesLink();
+            updateFeedbackFormState();
+        });
+
+        function showConfigStatus(msg, type) {
+            cfgStatus.textContent = msg;
+            cfgStatus.className = 'config-status ' + type;
+            cfgStatus.classList.remove('hidden');
+            setTimeout(() => {
+                cfgStatus.classList.add('hidden');
+            }, 5000);
+        }
+
+        // 根据配置状态启用/禁用表单
+        function updateFeedbackFormState() {
+            const configured = API.isConfigured();
+            const submitBtn = document.querySelector('.submit-btn');
+            if (configured) {
+                configPanel.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '提交反馈';
+            } else {
+                configPanel.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.textContent = '请先完成上方配置';
+            }
+            updateIssuesLink();
+        }
+
+        // 初始化
+        updateFeedbackFormState();
+
+        // ====== 反馈表单提交 ======
         const form = document.getElementById('feedback-form');
         if (form) {
             form.addEventListener('submit', async (e) => {
@@ -110,19 +313,25 @@
                     const result = await API.submitFeedback(formData);
                     if (result.success) {
                         messageDiv.className = 'form-message success';
-                        messageDiv.textContent = '反馈已成功提交，感谢您的支持！';
+                        messageDiv.textContent = '✅ 反馈已成功提交到 GitHub Issues，感谢您的支持！';
                         messageDiv.style.display = 'block';
                         form.reset();
+                    } else if (result.needConfig) {
+                        // 提示需要配置
+                        messageDiv.className = 'form-message error';
+                        messageDiv.textContent = '请先在上方配置 GitHub 连接信息。';
+                        messageDiv.style.display = 'block';
+                        configPanel.style.display = 'block';
                     } else {
                         throw new Error(result.error || '提交失败');
                     }
                 } catch (err) {
                     messageDiv.className = 'form-message error';
-                    messageDiv.textContent = `提交失败：${err.message}。您也可以直接通过 GitHub Issues 提交反馈。`;
+                    messageDiv.textContent = `提交失败：${err.message}。你也可以直接到 GitHub Issues 页面手动提交。`;
                     messageDiv.style.display = 'block';
                 } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '提交反馈';
+                    submitBtn.disabled = !API.isConfigured();
+                    submitBtn.textContent = API.isConfigured() ? '提交反馈' : '请先完成上方配置';
                 }
             });
         }
