@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作品详情 - 个人汉化资源站</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-work-detail">
+    <!-- 顶部导航栏 -->
+    <header class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="/">汉化资源站</a>
+            </div>
+            <nav class="nav-links">
+                <a href="/">介绍</a>
+                <a href="/works.html">作品</a>
+                <a href="/feedback.html">反馈</a>
+            </nav>
+            <button class="nav-toggle" onclick="toggleMenu()">☰</button>
+        </div>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="container">
+        <div class="work-detail" id="work-detail">
+            <a class="back-btn" href="/works.html">← 返回作品列表</a>
+            <div class="work-detail-header">
+                <h1 class="work-detail-title" id="work-title">加载中...</h1>
+                <div class="work-detail-meta" id="work-date"></div>
+            </div>
+            <div class="work-detail-content" id="work-content">
+                <div class="loading">加载作品内容中...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 个人汉化资源站 | 由 Cloudflare Pages 强力驱动</p>
+        </div>
+    </footer>
+
+    <script src="js/marked.min.js"></script>
+    <script>
+        function toggleMenu() {
+            document.querySelector('.nav-links').classList.toggle('show');
+        }
+
+        // 从URL获取作品ID
+        const params = new URLSearchParams(window.location.search);
+        const workId = params.get('id');
+
+        (async function() {
+            const titleEl = document.getElementById('work-title');
+            const dateEl = document.getElementById('work-date');
+            const contentEl = document.getElementById('work-content');
+
+            if (!workId) {
+                titleEl.textContent = '未指定作品';
+                contentEl.innerHTML = '<div class="empty-state"><p>请从作品列表选择作品查看。</p></div>';
+                return;
+            }
+
+            try {
+                // 加载作品列表元数据
+                const listResp = await fetch('works-list.json');
+                if (!listResp.ok) throw new Error('无法加载作品列表');
+                const works = await listResp.json();
+                const work = works.find(w => w.id === workId);
+
+                if (!work) {
+                    titleEl.textContent = '作品未找到';
+                    contentEl.innerHTML = '<div class="empty-state"><p>该作品不存在。</p></div>';
+                    return;
+                }
+
+                titleEl.textContent = work.title;
+                dateEl.textContent = work.date || '';
+                document.title = work.title + ' - 个人汉化资源站';
+
+                // 加载Markdown内容
+                const mdResp = await fetch('works/' + work.file);
+                if (!mdResp.ok) throw new Error('作品文件未找到');
+                const markdown = await mdResp.text();
+                contentEl.innerHTML = marked.parse(markdown);
+            } catch (e) {
+                contentEl.innerHTML = `<div class="empty-state"><p>加载失败：${e.message}</p></div>`;
+            }
+        })();
+    </script>
+</body>
+</html>

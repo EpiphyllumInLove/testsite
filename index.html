@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>妖精之里</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-about">
+    <!-- 顶部导航栏 -->
+    <header class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="/">花林妖精个人网站</a>
+            </div>
+            <nav class="nav-links">
+                <a href="/" class="active">介绍</a>
+                <a href="/works.html">作品</a>
+                <a href="/feedback.html">反馈</a>
+            </nav>
+            <button class="nav-toggle" onclick="toggleMenu()">☰</button>
+        </div>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="container">
+        <div class="about-section">
+            <div class="about-card">
+                <h1>关于我</h1>
+                <p>你好！我是 <strong>花林妖精</strong>，一名个人汉化者。</p>
+                <p>本网站用于发布我的汉化作品，提供下载链接和相关说明。</p>
+
+                <h2>网站使用须知</h2>
+                <div class="notice-box">
+                    <h3>📌 请仔细阅读</h3>
+                    <p>1. 本网站所有汉化作品均为个人兴趣制作，<strong>免费分享</strong>，请勿用于商业用途。</p>
+                    <p>2. 转载或搬运请注明出处，并保留汉化人员信息。</p>
+                    <p>3. 如发现汉化问题（翻译错误、BUG等），欢迎通过反馈页面向我提出。</p>
+                    <p>4. 下载链接如失效，请及时通过反馈或社交媒体告知。</p>
+                    <p>5. 请尊重汉化者的劳动成果，不要倒卖或二次打包。</p>
+                </div>
+
+                <h2>联系我</h2>
+                <p>如果你有任何问题或建议，欢迎通过以下方式找到我：</p>
+                <div class="social-links">
+                    <a class="social-link" href="https://space.bilibili.com/3706964416661960" target="_blank">B站</a>
+                </div>
+
+                <h2>支持我</h2>
+                <p>这个功能还没做捏</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 花林妖精个人汉化 | 网站为花林妖精所有</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script>
+        function toggleMenu() {
+            document.querySelector('.nav-links').classList.toggle('show');
+        }
+    </script>
+</body>
+</html>

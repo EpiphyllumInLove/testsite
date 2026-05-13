@@ -1,0 +1,825 @@
+/**
+ * 汉化资源站 - 主应用脚本 (SPA)
+ * 基于纯前端 + GitHub API，数据存储在 /data/ 目录
+ * 支持：介绍页 / 作品列表 / 作品详情 / 反馈 / 管理面板
+ */
+'use strict';
+
+// ==================== 全局状态 ====================
+const AppState = {
+    config: null,        // site config
+    works: [],           // works list
+    currentPage: 'home', // home | works | work-detail | feedback | admin
+    currentWork: null,   // 当前查看的作品
+    adminLoggedIn: false,
+    searchQuery: '',
+};
+
+// ==================== 页面基础路径 ====================
+const BASE_PATH = window.location.origin + window.location.pathname.replace(/\/+$/, '');
+const DATA_PATH = 'data';
+
+// ==================== 工具函数 ====================
+
+/** 显示 Toast 通知 */
+function showToast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/** 统一 fetch 封装 (带超时) */
+async function fetchJSON(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        return await res.json();
+    } catch (e) {
+        clearTimeout(timeout);
+        throw e;
+    }
+}
+
+/** 生成唯一 ID */
+function genId() {
+    return 'w-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+/** 格式化日期 yyyy-MM-dd */
+function fmtDate(d) {
+    const dt = new Date(d);
+    return dt.getFullYear() + '-' +
+        String(dt.getMonth()+1).padStart(2,'0') + '-' +
+        String(dt.getDate()).padStart(2,'0');
+}
+
+/** HTML转义 */
+function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+/** 安全渲染 Markdown，返回 HTML */
+function renderMarkdown(md) {
+    if (!md) return '';
+    try {
+        return marked.parse(md, { breaks: true, gfm: true });
+    } catch (e) {
+        return '<p>' + escHtml(md) + '</p>';
+    }
+}
+
+/** 获取社交图标的 FontAwesome 类名 */
+function getSocialIcon(name) {
+    const map = {
+        'weibo': 'fab fa-weibo',
+        'bilibili': 'fab fa-bilibili',
+        'twitter': 'fab fa-twitter',
+        'github': 'fab fa-github',
+        'qq': 'fab fa-qq',
+        'wechat': 'fab fa-weixin',
+        'telegram': 'fab fa-telegram',
+        'discord': 'fab fa-discord',
+        'email': 'fas fa-envelope',
+        'youtube': 'fab fa-youtube',
+    };
+    return map[name.toLowerCase()] || 'fas fa-link';
+}
+
+// ==================== 数据加载与持久化 ====================
+
+/** 从 /data/ 目录加载 JSON 文件（采用 try-catch，加载失败则使用默认值） */
+async function loadJSON(file) {
+    try {
+        const resp = await fetch(`${DATA_PATH}/${file}?_t=${Date.now()}`);
+        if (resp.ok) return await resp.json();
+        throw new Error('File not found');
+    } catch (e) {
+        console.warn(`[loadJSON] Failed to load ${file}:`, e.message);
+        return null;
+    }
+}
+
+/** 保存数据到本地 —— 通过下载方式（用户需手动覆盖 data 目录下的文件）*/
+function downloadJSON(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * GitHub API：提交反馈到仓库的 issues 或 feedback 文件
+ */
+async function submitFeedbackToGitHub(feedback, config) {
+    const gh = config.github;
+    if (!gh || !gh.owner || !gh.repo || !gh.token) {
+        // 如果没有配置 GitHub，则降级为下载 JSON 文件
+        downloadJSON({ feedbacks: [feedback] }, `feedback-${Date.now()}.json`);
+        return true;
+    }
+
+    // 用 GitHub API 在仓库中创建一个 issue，或追加到 feedbacks.json
+    // 此处采用 Append 到 feedbacks.json 的方案（需要先读取再更新，简单起见用 issues）
+    // 方案1：创建 Issue（无需读取已有数据）
+    try {
+        const body = [
+            `## 反馈详情`,
+            `**类型**: ${feedback.type}`,
+            `**作品**: ${feedback.work || '无'}`,
+            `**联系**: ${feedback.contact || '未留'}`,
+            `**内容**:`,
+            feedback.content,
+            `---`,
+            `*提交时间: ${feedback.date}*`,
+            `*用户代理: ${navigator.userAgent}*`
+        ].join('\n');
+
+        await fetchJSON(`https://api.github.com/repos/${gh.owner}/${gh.repo}/issues`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${gh.token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify({
+                title: `[反馈] ${feedback.type} - ${feedback.work || '其他'}`,
+                body: body,
+                labels: ['feedback', feedback.type]
+            })
+        });
+        return true;
+    } catch (e) {
+        console.error('[GitHub] Issue 提交失败:', e);
+        // 降级下载
+        downloadJSON({ feedback: feedback }, `feedback-${Date.now()}.json`);
+        return true; // 虽降级但仍算成功
+    }
+}
+
+// ==================== SPA 路由 ====================
+
+function navigateTo(page, param) {
+    // 关闭移动菜单
+    document.getElementById('navMenu').classList.remove('active');
+
+    // 更新导航高亮
+    document.querySelectorAll('.nav-link').forEach(el => {
+        el.classList.toggle('active', el.dataset.page === page);
+    });
+
+    AppState.currentPage = page;
+    if (page === 'work-detail') {
+        AppState.currentWork = param || null;
+    }
+
+    // 更新 URL hash
+    let hash = page;
+    if (page === 'work-detail' && param) hash += '/' + param;
+    window.location.hash = hash;
+
+    renderPage();
+}
+
+function toggleMobileMenu() {
+    document.getElementById('navMenu').classList.toggle('active');
+}
+
+// ==================== 页面路由处理 ====================
+
+function handleHashChange() {
+    const hash = window.location.hash.slice(1) || 'home';
+    const parts = hash.split('/');
+    const page = parts[0];
+    const param = parts.slice(1).join('/');
+
+    document.querySelectorAll('.nav-link').forEach(el => {
+        el.classList.toggle('active', el.dataset.page === page || (page === 'work-detail' && el.dataset.page === 'works'));
+    });
+
+    AppState.currentPage = page;
+    if (page === 'work-detail') AppState.currentWork = AppState.works.find(w => w.id === param) || null;
+
+    renderPage();
+}
+
+// ==================== 页面渲染 ====================
+
+function renderPage() {
+    const main = document.getElementById('mainContent');
+    if (!main) return;
+
+    switch (AppState.currentPage) {
+        case 'home': renderHome(main); break;
+        case 'works': renderWorks(main); break;
+        case 'work-detail': renderWorkDetail(main); break;
+        case 'feedback': renderFeedback(main); break;
+        case 'admin': renderAdmin(main); break;
+        default: renderHome(main);
+    }
+
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ---------- 介绍页 ----------
+function renderHome(main) {
+    const cfg = AppState.config;
+    if (!cfg) {
+        main.innerHTML = '<div class="about-hero"><p>加载中...</p></div>';
+        return;
+    }
+
+    const about = cfg.about || {};
+    const social = cfg.social || [];
+
+    let socialHtml = '';
+    if (social.length) {
+        socialHtml = `<div class="social-links">${social.map(s =>
+            `<a href="${escHtml(s.url)}" target="_blank" rel="noopener" class="social-link">
+                <i class="${getSocialIcon(s.icon || s.name)}"></i>
+                <span>${escHtml(s.name)}</span>
+            </a>`
+        ).join('')}</div>`;
+    }
+
+    main.innerHTML = `
+        <div class="about-hero">
+            ${about.avatar ? `<img src="${escHtml(about.avatar)}" alt="avatar" class="about-avatar">` :
+                `<div class="about-avatar" style="display:flex;align-items:center;justify-content:center;font-size:3rem;background:var(--border);">👤</div>`}
+            <div class="about-name">${escHtml(about.name || '')}</div>
+            <div class="about-bio">${escHtml(about.bio || '')}</div>
+            ${socialHtml}
+        </div>
+        <div class="about-content markdown-body">
+            ${renderMarkdown(about.content || '## 欢迎\n\n内容正在编辑中...')}
+        </div>
+    `;
+}
+
+// ---------- 作品列表页 ----------
+function renderWorks(main) {
+    const works = AppState.works || [];
+    const query = AppState.searchQuery || '';
+
+    let filtered = works;
+    if (query.trim()) {
+        const q = query.toLowerCase();
+        filtered = works.filter(w =>
+            (w.title && w.title.toLowerCase().includes(q)) ||
+            (w.summary && w.summary.toLowerCase().includes(q)) ||
+            (w.tags && w.tags.some(t => t.toLowerCase().includes(q)))
+        );
+    }
+
+    // 按日期排序（最新的在前）
+    const sorted = [...filtered].sort((a, b) => {
+        return (new Date(b.date || 0)) - (new Date(a.date || 0));
+    });
+
+    main.innerHTML = `
+        <div class="works-header">
+            <h1>
+                <span>📚 汉化作品</span>
+                <span class="works-count">(${sorted.length} 部)</span>
+            </h1>
+            <div class="works-search">
+                <input type="text" id="worksSearch" placeholder="搜索作品标题/标签..." value="${escHtml(query)}" oninput="onWorksSearch(this.value)">
+            </div>
+        </div>
+        <div class="works-grid">
+            ${sorted.length === 0 ? '<p style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:60px 0;">暂无作品，敬请期待！</p>' :
+                sorted.map(w => {
+                    const coverStyle = w.cover ? `style="background-image:url(${escHtml(w.cover)});background-size:cover;background-position:center;"` : '';
+                    const coverIcon = w.cover ? '' : '🎮';
+                    const tags = (w.tags || []).map(t => `<span class="work-card-tag">${escHtml(t)}</span>`).join('');
+                    return `
+                    <div class="work-card" onclick="navigateTo('work-detail','${escHtml(w.id)}')">
+                        <div class="work-card-cover" ${coverStyle}>${coverIcon}</div>
+                        <div class="work-card-body">
+                            <div class="work-card-title">${escHtml(w.title || '未命名作品')}</div>
+                            <div class="work-card-summary">${escHtml(w.summary || '')}</div>
+                            <div class="work-card-meta">
+                                ${tags}
+                                <span class="work-card-date">${w.date || ''}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('')}
+        </div>
+    `;
+
+    document.getElementById('worksSearch')?.focus();
+}
+
+function onWorksSearch(val) {
+    AppState.searchQuery = val;
+    renderPage();
+}
+
+// ---------- 作品详情页 ----------
+function renderWorkDetail(main) {
+    const work = AppState.currentWork;
+    if (!work) {
+        main.innerHTML = `
+            <div style="text-align:center;padding:80px 20px;">
+                <p style="color:var(--text-secondary);margin-bottom:20px;">未找到该作品</p>
+                <button class="btn btn-primary" onclick="navigateTo('works')">返回作品列表</button>
+            </div>`;
+        return;
+    }
+
+    const tags = (work.tags || []).map(t => `<span class="work-detail-tag">${escHtml(t)}</span>`).join('');
+    const statusClass = work.status === '已发布' || work.status === '已更新' ? 'success' : 'info';
+    const coverHtml = work.cover ? `<img src="${escHtml(work.cover)}" alt="${escHtml(work.title)}" class="work-detail-cover">` : '';
+
+    main.innerHTML = `
+        <div class="work-detail">
+            <div class="work-detail-header">
+                <div class="work-detail-back" onclick="navigateTo('works')">
+                    <i class="fas fa-arrow-left"></i> 返回作品列表
+                </div>
+                <h1 class="work-detail-title">${escHtml(work.title || '')}</h1>
+                <div class="work-detail-meta">
+                    ${tags}
+                    <span class="work-detail-status" style="background:${work.status === '已下架' ? '#fee2e2' : '#dcfce7'};color:${work.status === '已下架' ? '#dc2626' : '#16a34a'}">
+                        ${escHtml(work.status || '未知')}
+                    </span>
+                    <span class="work-detail-date">📅 ${work.date || ''}</span>
+                </div>
+            </div>
+            ${coverHtml}
+            <div class="work-detail-content markdown-body">
+                ${renderMarkdown(work.content || '暂无内容')}
+            </div>
+        </div>
+    `;
+}
+
+// ---------- 反馈页 ----------
+function renderFeedback(main) {
+    const works = AppState.works || [];
+    const workOpts = works.map(w => `<option value="${escHtml(w.title)}">${escHtml(w.title)}</option>`).join('');
+
+    main.innerHTML = `
+        <div class="feedback-container">
+            <div class="feedback-header">
+                <h1>💬 反馈与建议</h1>
+                <p>如果您在使用汉化作品时遇到问题，或有什么建议，欢迎提交反馈！</p>
+            </div>
+            <form class="feedback-form" id="feedbackForm" onsubmit="submitFeedback(event)">
+                <div class="form-group">
+                    <label for="fbType">反馈类型 *</label>
+                    <select id="fbType" required>
+                        <option value="bug">BUG 报告</option>
+                        <option value="suggestion">建议意见</option>
+                        <option value="translation">翻译问题</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fbWork">相关作品</label>
+                    <select id="fbWork">
+                        <option value="">请选择（可选）</option>
+                        ${workOpts}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fbContact">联系方式</label>
+                    <input type="text" id="fbContact" placeholder="QQ / 邮箱 / 其他（选填）">
+                </div>
+                <div class="form-group">
+                    <label for="fbContent">反馈内容 *</label>
+                    <textarea id="fbContent" required placeholder="请详细描述您的问题或建议..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id="fbSubmitBtn">
+                    <i class="fas fa-paper-plane"></i> 提交反馈
+                </button>
+            </form>
+        </div>
+    `;
+}
+
+async function submitFeedback(e) {
+    e.preventDefault();
+    const btn = document.getElementById('fbSubmitBtn');
+    if (btn.disabled) return;
+
+    const feedback = {
+        type: document.getElementById('fbType').value,
+        work: document.getElementById('fbWork').value,
+        contact: document.getElementById('fbContact').value,
+        content: document.getElementById('fbContent').value,
+        date: new Date().toISOString(),
+    };
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+
+    try {
+        const cfg = AppState.config;
+        const ok = await submitFeedbackToGitHub(feedback, cfg);
+        if (ok) {
+            showToast('✅ 反馈已成功提交，感谢您的支持！', 'success');
+            document.getElementById('feedbackForm').reset();
+        }
+    } catch (err) {
+        showToast('❌ 提交失败: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交反馈';
+    }
+}
+
+// ---------- 管理面板 ----------
+function renderAdmin(main) {
+    if (!AppState.adminLoggedIn) {
+        main.innerHTML = `
+            <div class="admin-login">
+                <div class="admin-login-card">
+                    <h2>🔐 管理面板</h2>
+                    <p>请输入管理密码以管理作品</p>
+                    <div class="form-group">
+                        <label for="adminPwd">密码</label>
+                        <input type="password" id="adminPwd" placeholder="请输入密码" onkeydown="if(event.key==='Enter')adminLogin()">
+                    </div>
+                    <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;justify-content:center;">
+                        <i class="fas fa-unlock-alt"></i> 登录
+                    </button>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const works = AppState.works || [];
+
+    main.innerHTML = `
+        <div class="admin-container">
+            <div class="admin-header">
+                <h1>⚙️ 管理面板</h1>
+                <div>
+                    <button class="btn btn-secondary btn-sm" onclick="adminLogout()">
+                        <i class="fas fa-sign-out-alt"></i> 退出
+                    </button>
+                </div>
+            </div>
+            <div class="admin-panel active">
+                <div class="admin-actions">
+                    <button class="btn btn-primary" onclick="showWorkModal()">
+                        <i class="fas fa-plus"></i> 添加作品
+                    </button>
+                    <button class="btn btn-secondary" onclick="downloadConfig()">
+                        <i class="fas fa-download"></i> 导出配置
+                    </button>
+                    <button class="btn btn-secondary" onclick="syncToGitHub()">
+                        <i class="fab fa-github"></i> 同步到 GitHub
+                    </button>
+                </div>
+                <div class="works-header" style="margin-top:8px;">
+                    <h2 style="font-size:1.1rem;display:flex;align-items:center;gap:8px;">
+                        📦 作品管理 <span style="font-size:0.85rem;color:var(--text-secondary);font-weight:normal;">(${works.length} 个)</span>
+                    </h2>
+                </div>
+                <div class="admin-works-list" id="adminWorksList">
+                    ${works.length === 0 ?
+                        '<p style="color:var(--text-secondary);text-align:center;padding:40px 0;">暂无作品，点击上方按钮添加</p>' :
+                        works.map(w => `
+                        <div class="admin-work-item">
+                            <div class="work-info">
+                                <div class="work-title">${escHtml(w.title || '未命名')}</div>
+                                <div class="work-id">ID: ${escHtml(w.id)} | ${w.date || '无日期'} | ${(w.tags||[]).join(', ') || '无标签'}</div>
+                            </div>
+                            <div class="work-actions">
+                                <button class="btn btn-secondary btn-sm" onclick="showWorkModal('${escHtml(w.id)}')">
+                                    <i class="fas fa-edit"></i> 编辑
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteWork('${escHtml(w.id)}')">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- 作品编辑模态框 -->
+        <div class="modal-overlay" id="workModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="modalTitle">添加作品</h2>
+                    <button class="modal-close" onclick="closeWorkModal()">&times;</button>
+                </div>
+                <form id="workForm" onsubmit="saveWork(event)">
+                    <input type="hidden" id="workId">
+                    <div class="form-group">
+                        <label for="workTitle">作品标题 *</label>
+                        <input type="text" id="workTitle" required placeholder="输入作品标题">
+                    </div>
+                    <div class="form-group">
+                        <label for="workCover">封面图片链接</label>
+                        <input type="url" id="workCover" placeholder="https://example.com/cover.jpg（选填）">
+                    </div>
+                    <div class="form-group">
+                        <label for="workSummary">简介</label>
+                        <textarea id="workSummary" rows="2" placeholder="简短的介绍（会显示在作品列表）"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="workTags">标签（逗号分隔）</label>
+                        <input type="text" id="workTags" placeholder="RPG, 汉化, ADV">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:12px;">
+                        <div style="flex:1;">
+                            <label for="workDate">发布日期</label>
+                            <input type="date" id="workDate">
+                        </div>
+                        <div style="flex:1;">
+                            <label for="workStatus">状态</label>
+                            <select id="workStatus">
+                                <option value="已发布">已发布</option>
+                                <option value="已更新">已更新</option>
+                                <option value="即将发布">即将发布</option>
+                                <option value="已下架">已下架</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="workContent">作品详情（Markdown 格式）*</label>
+                        <textarea id="workContent" rows="12" placeholder="支持 Markdown 格式，可以插入图片（用 ![](url)）&#10;&#10;示例：&#10;## 作品简介&#10;&#10;汉化说明...&#10;&#10;## 下载链接&#10;&#10;[百度网盘](https://pan.baidu.com) 提取码：XXXX&#10;&#10;![截图](https://example.com/screenshot.png)"></textarea>
+                    </div>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeWorkModal()">取消</button>
+                        <button type="submit" class="btn btn-primary" id="saveWorkBtn">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
+// ---------- 管理功能函数 ----------
+
+function adminLogin() {
+    const pwd = document.getElementById('adminPwd')?.value || '';
+    const cfg = AppState.config;
+    if (cfg && cfg.admin && cfg.admin.password && pwd === cfg.admin.password) {
+        AppState.adminLoggedIn = true;
+        showToast('✅ 登录成功', 'success');
+        renderPage();
+    } else {
+        showToast('❌ 密码错误，请重试', 'error');
+    }
+}
+
+function adminLogout() {
+    AppState.adminLoggedIn = false;
+    renderPage();
+    showToast('已退出管理', 'info');
+}
+
+function showWorkModal(id) {
+    const modal = document.getElementById('workModal');
+    if (!modal) return;
+
+    if (id) {
+        // 编辑模式
+        const work = AppState.works.find(w => w.id === id);
+        if (!work) return;
+        document.getElementById('modalTitle').textContent = '编辑作品';
+        document.getElementById('workId').value = work.id;
+        document.getElementById('workTitle').value = work.title || '';
+        document.getElementById('workCover').value = work.cover || '';
+        document.getElementById('workSummary').value = work.summary || '';
+        document.getElementById('workTags').value = (work.tags || []).join(', ');
+        document.getElementById('workDate').value = work.date || '';
+        document.getElementById('workStatus').value = work.status || '已发布';
+        document.getElementById('workContent').value = work.content || '';
+    } else {
+        // 添加模式
+        document.getElementById('modalTitle').textContent = '添加作品';
+        document.getElementById('workId').value = '';
+        document.getElementById('workTitle').value = '';
+        document.getElementById('workCover').value = '';
+        document.getElementById('workSummary').value = '';
+        document.getElementById('workTags').value = '';
+        document.getElementById('workDate').value = fmtDate(new Date());
+        document.getElementById('workStatus').value = '已发布';
+        document.getElementById('workContent').value = '';
+    }
+
+    modal.classList.add('active');
+}
+
+function closeWorkModal() {
+    document.getElementById('workModal')?.classList.remove('active');
+}
+
+function saveWork(e) {
+    e.preventDefault();
+    const id = document.getElementById('workId').value;
+    const title = document.getElementById('workTitle').value.trim();
+    if (!title) {
+        showToast('请输入作品标题', 'error');
+        return;
+    }
+
+    const tags = document.getElementById('workTags').value
+        .split(/[,，]/)
+        .map(t => t.trim())
+        .filter(t => t);
+
+    const workData = {
+        id: id || genId(),
+        title: title,
+        cover: document.getElementById('workCover').value.trim() || '',
+        summary: document.getElementById('workSummary').value.trim() || '',
+        tags: tags,
+        date: document.getElementById('workDate').value || fmtDate(new Date()),
+        status: document.getElementById('workStatus').value,
+        content: document.getElementById('workContent').value,
+    };
+
+    if (id) {
+        // 编辑：替换原有
+        const idx = AppState.works.findIndex(w => w.id === id);
+        if (idx >= 0) AppState.works[idx] = workData;
+    } else {
+        // 添加
+        AppState.works.push(workData);
+    }
+
+    // 持久化保存到本地
+    saveWorksToLocal();
+    closeWorkModal();
+    showToast('✅ 作品已保存', 'success');
+    // 重新渲染管理面板
+    renderPage();
+}
+
+function deleteWork(id) {
+    if (!confirm('确定要删除该作品吗？此操作不可撤销。')) return;
+    AppState.works = AppState.works.filter(w => w.id !== id);
+    saveWorksToLocal();
+    showToast('🗑️ 作品已删除', 'info');
+    renderPage();
+}
+
+/** 将作品数据保存到本地 JSON 文件（触发浏览器下载，供部署者替换）*/
+function saveWorksToLocal() {
+    downloadJSON(AppState.works, 'works.json');
+    // 同时也显示提醒
+    showToast('💾 请将下载的 works.json 替换到 /data/ 目录', 'info');
+}
+
+/** 导出配置 */
+function downloadConfig() {
+    const config = AppState.config;
+    if (config) {
+        downloadJSON(config, 'config.json');
+        showToast('✅ 配置已导出', 'success');
+    }
+}
+
+/** 将 works.json 提交到 GitHub 仓库 */
+async function syncToGitHub() {
+    const gh = AppState.config?.github;
+    if (!gh || !gh.owner || !gh.repo || !gh.token) {
+        showToast('请先在 /data/config.json 中配置 GitHub Token', 'error');
+        return;
+    }
+
+    showToast('🔄 正在同步到 GitHub...', 'info');
+    try {
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(AppState.works, null, 2))));
+        const apiUrl = `https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/data/works.json`;
+
+        // 先尝试获取现有文件的 sha
+        let sha = '';
+        try {
+            const existing = await fetchJSON(apiUrl, {
+                headers: {
+                    'Authorization': `token ${gh.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            sha = existing.sha;
+        } catch (e) {
+            // 文件可能不存在，忽略
+        }
+
+        const body = {
+            message: `Update works.json - ${new Date().toISOString().slice(0,10)}`,
+            content: content,
+            branch: 'main'
+        };
+        if (sha) body.sha = sha;
+
+        await fetchJSON(apiUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${gh.token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        showToast('✅ 同步成功！works.json 已更新到 GitHub', 'success');
+    } catch (e) {
+        showToast('❌ 同步失败: ' + e.message, 'error');
+    }
+}
+
+// ==================== 初始化 ====================
+
+async function init() {
+    try {
+        // 加载配置
+        const config = await loadJSON('config.json');
+        if (!config) {
+            // 如果加载失败，设置默认配置
+            AppState.config = {
+                siteTitle: '汉化资源站',
+                siteSubtitle: '用心汉化，分享快乐',
+                about: {
+                    avatar: '',
+                    name: '汉化作者',
+                    bio: '个人汉化者',
+                    content: '## 欢迎\n\n内容正在编辑中...'
+                },
+                social: [],
+                admin: { password: 'admin123' },
+                github: { owner: '', repo: '', token: '' }
+            };
+        } else {
+            AppState.config = config;
+        }
+
+        // 设置站点标题
+        if (AppState.config.siteTitle) {
+            document.getElementById('siteTitle').textContent = AppState.config.siteTitle;
+            document.title = AppState.config.siteTitle;
+        }
+
+        // 加载作品数据
+        const works = await loadJSON('works.json');
+        if (works && Array.isArray(works)) {
+            AppState.works = works;
+        } else {
+            AppState.works = [];
+        }
+
+        // 处理 hash 路由
+        if (window.location.hash) {
+            handleHashChange();
+        } else {
+            renderPage();
+        }
+
+        // 监听 hash 变化
+        window.addEventListener('hashchange', handleHashChange);
+
+        console.log(`[Init] 站点已加载，共 ${AppState.works.length} 个作品`);
+    } catch (e) {
+        console.error('[Init] 初始化失败:', e);
+        document.getElementById('mainContent').innerHTML = `
+            <div style="text-align:center;padding:80px 20px;">
+                <h2>😵 加载失败</h2>
+                <p style="color:var(--text-secondary);margin:16px 0;">${escHtml(e.message)}</p>
+                <button class="btn btn-primary" onclick="location.reload()">重新加载</button>
+            </div>
+        `;
+    }
+}
+
+// 暴露全局函数供 HTML onclick 调用
+window.navigateTo = navigateTo;
+window.toggleMobileMenu = toggleMobileMenu;
+window.onWorksSearch = onWorksSearch;
+window.submitFeedback = submitFeedback;
+window.adminLogin = adminLogin;
+window.adminLogout = adminLogout;
+window.showWorkModal = showWorkModal;
+window.closeWorkModal = closeWorkModal;
+window.saveWork = saveWork;
+window.deleteWork = deleteWork;
+window.downloadConfig = downloadConfig;
+window.syncToGitHub = syncToGitHub;
+window.escHtml = escHtml;
+
+// 启动
+document.addEventListener('DOMContentLoaded', init);

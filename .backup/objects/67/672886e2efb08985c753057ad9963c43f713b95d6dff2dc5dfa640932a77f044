@@ -1,0 +1,248 @@
+# 🎮 个人汉化资源站
+
+一个专为个人汉化者设计的静态资源站模板，可部署到 **Cloudflare Pages** 或 **GitHub Pages**。
+
+## ✨ 功能特性
+
+- 📄 **介绍页** — 展示个人信息、网站须知、社交媒体链接
+- 🎨 **作品页** — 以卡片网格展示所有汉化作品，含封面图、标题、标签
+- 📝 **作品详情页** — Markdown 渲染，支持图片、表格、代码块等丰富排版
+- 💬 **反馈页** — 用户提交反馈，通过 GitHub Issues 存储到仓库
+- 📱 **响应式设计** — 完美适配桌面端和移动端
+- ⚡ **纯静态** — 零后端依赖，部署在 Cloudflare Pages / GitHub Pages
+
+## 📁 项目结构
+
+```
+/
+├── index.html              # 主入口
+├── README.md               # 使用说明书（本文件）
+├── .gitignore
+├── css/
+│   └── style.css           # 全局样式
+├── js/
+│   ├── marked.min.js       # Markdown 渲染库（from CDN）
+│   ├── router.js           # 前端路由（页面切换逻辑）
+│   └── api.js              # GitHub API（反馈提交功能）
+├── pages/
+│   ├── about.html          # 介绍页
+│   ├── works.html          # 作品页
+│   └── feedback.html       # 反馈页
+├── works/                  # 作品 Markdown 文件夹
+│   ├── example.md          # 示例作品
+│   └── another.md          # 另一示例作品
+└── works-list.json         # 作品列表配置文件
+```
+
+## 🚀 快速开始
+
+### 1. Fork / Clone 本仓库
+
+```bash
+git clone https://github.com/你的用户名/你的仓库名.git
+cd 你的仓库名
+```
+
+### 2. 修改介绍页
+
+编辑 `pages/about.html`，替换以下内容：
+- 你的名字
+- 网站使用须知的文字
+- 社交媒体链接（将 `#` 替换为真实 URL）
+- 支持方式（爱发电、微信赞赏等）
+
+### 3. 添加作品
+
+#### 方式一：手动编辑（推荐）
+
+**第1步：创建作品 Markdown 文件**
+在 `works/` 目录下创建 `你的作品id.md`，参考 `example.md` 的格式。
+
+**第2步：编辑作品列表**
+打开 `works-list.json`，添加一条记录：
+
+```json
+{
+    "id": "your-work-id",           // 唯一标识，与文件名一致
+    "title": "你的作品标题",          // 作品卡片上显示的标题
+    "file": "your-work-id.md",      // Markdown 文件名
+    "image": "封面图URL",            // 作品卡片封面（建议 400x200）
+    "desc": "简要描述",              // 卡片上的简介文字
+    "date": "2024-01-15",           // 发布日期
+    "tags": ["RPG", "PC"]           // 标签
+}
+```
+
+> 💡 封面图可以先用 `https://picsum.photos/seed/任意关键词/400/200` 作为占位图
+
+**第3步：提交到 Git**
+
+```bash
+git add .
+git commit -m "添加新作品：你的作品标题"
+git push
+```
+
+#### 方式二：使用脚本（进阶）
+
+如果你熟悉 Node.js，可以编写脚本自动化生成 `works-list.json`（参考 `works/` 目录下的 MD 文件自动生成列表）。
+
+### 4. 配置 GitHub 反馈功能
+
+反馈功能通过 **GitHub Issues** 实现。有两种配置方式：
+
+#### 方法 A：在浏览器控制台配置（推荐）
+
+部署后，在网站页面按 `F12` 打开开发者工具，切换到 Console（控制台），输入：
+
+```javascript
+API.saveConfig('你的GitHub用户名', '你的仓库名', '你的Personal Access Token');
+```
+
+**获取 Personal Access Token**：
+1. 访问 https://github.com/settings/tokens
+2. 点击 "Generate new token (classic)"
+3. 勾选 `public_repo` 权限（公开仓库）或 `repo` 权限（私有仓库）
+4. 生成并复制 Token
+
+#### 方法 B：直接修改 js/api.js
+
+将文件中的 `this.owner`、`this.repo`、`this.token` 的默认值直接填写。
+
+> ⚠️ **安全警告**：方法 B 会将 Token 暴露在前端源码中，仅用于演示目的。**强烈建议使用方法 A**，或使用 Cloudflare Pages Functions 作为代理。
+
+### 5. 部署到 Cloudflare Pages
+
+#### 方法一：直接连接 GitHub 仓库（推荐）
+
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 进入 **Pages** → **Create a project** → **Connect to Git**
+3. 选择你的 GitHub 仓库
+4. 构建配置：
+   - **框架预设**: None
+   - **构建命令**: 留空（纯静态）
+   - **构建输出目录**: `/`
+5. 点击 **Save and Deploy**
+
+#### 方法二：手动上传
+
+1. 在 **Workers & Pages** → **Pages** → **Create a project** → **Direct Upload**
+2. 将项目所有文件拖拽上传
+
+> ⚡ 部署完成后，Cloudflare 会自动分配一个 `*.pages.dev` 域名，你也可以绑定自己的自定义域名。
+
+### 6. 部署到 GitHub Pages
+
+1. 在 GitHub 仓库页面，进入 **Settings** → **Pages**
+2. Source 选择 **Deploy from a branch**
+3. Branch 选择 `main`，文件夹选择 `/ (root)`
+4. 点击 **Save**
+5. 等待几分钟，访问 `https://你的用户名.github.io/你的仓库名/`
+
+## ✏️ 日常维护
+
+### 添加新作品
+
+```bash
+# 1. 创建 MD 文件
+echo "# 新作品" > works/new-work.md
+
+# 2. 编辑 works-list.json，添加新条目
+# 3. 提交并推送
+git add .
+git commit -m "添加新作品：新作品"
+git push
+```
+
+### 修改作品
+
+直接编辑 `works/` 下的对应 `.md` 文件，修改后提交即可。
+
+### 删除作品
+
+1. 删除对应的 `.md` 文件
+2. 从 `works-list.json` 中删除对应的条目
+3. 提交更改
+
+### 查看用户反馈
+
+反馈会自动以 Issue 形式提交到你的 GitHub 仓库。访问：
+`https://github.com/你的用户名/你的仓库名/issues`
+
+搜索带 `feedback` 标签的 issue 即可查看所有反馈。
+
+## 🎨 自定义样式
+
+如果你想修改网站外观，编辑 `css/style.css`：
+
+- **导航栏颜色**: 修改 `.navbar` 的 `background` 渐变色
+- **卡片样式**: 修改 `.work-card` 相关样式
+- **响应式断点**: 修改 `@media` 中的宽度
+
+## 📝 作品 Markdown 支持
+
+作品详情页支持完整的 Markdown 语法：
+
+```markdown
+# 一级标题
+## 二级标题
+
+**粗体** *斜体* ~~删除线~~
+
+[链接文字](https://example.com)
+![图片描述](图片URL)
+
+> 引用文字
+
+- 无序列表项
+1. 有序列表项
+
+| 表格 | 列2 |
+|------|-----|
+| 内容 | 内容 |
+
+`行内代码`
+
+```代码块```
+```
+
+插入图片示例：
+
+```markdown
+![游戏截图1](https://你的域名/images/screenshot1.png)
+![游戏截图2](images/local-screenshot.png)
+```
+
+> 💡 图片可以放在项目 `images/` 目录下（需要自己创建），也可以使用图床的外链。
+
+## ❓ 常见问题
+
+**Q: 为什么作品页显示"暂无作品"？**
+A: 请确保 `works-list.json` 文件存在且格式正确。
+
+**Q: 反馈提交失败怎么办？**
+A: 检查是否已在浏览器控制台配置了 GitHub Token，或者直接到 GitHub Issues 页面手动提交。
+
+**Q: 如何在本地预览？**
+A: 由于浏览器安全策略，直接打开 `index.html` 可能无法正常加载页面。请使用本地服务器：
+
+```bash
+# 使用 Python
+python3 -m http.server 8000
+
+# 或使用 Node.js 的 serve
+npx serve .
+```
+
+然后访问 `http://localhost:8000`。
+
+**Q: 是否支持搜索功能？**
+A: 当前版本为轻量设计，未内置搜索。后续可以考虑接入第三方搜索如 Algolia DocSearch。
+
+## 📄 许可证
+
+本项目采用 MIT 许可证。你可以自由使用、修改和分发。
+
+---
+
+**如果这个模板对你有帮助，欢迎给个 ⭐️ Star！**

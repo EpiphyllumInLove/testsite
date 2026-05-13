@@ -1,0 +1,45 @@
+<div class="feedback-section">
+    <div class="feedback-card">
+        <h1>提交反馈</h1>
+        <p class="subtitle">发现汉化问题或有建议？请填写下方表单，我会尽快处理。</p>
+
+        <form id="feedback-form">
+            <div class="form-group">
+                <label for="feedback-type">反馈类型 <span class="required">*</span></label>
+                <select id="feedback-type" required>
+                    <option value="">请选择反馈类型</option>
+                    <option value="bug">汉化错误 / BUG</option>
+                    <option value="suggestion">功能建议</option>
+                    <option value="request">作品请求</option>
+                    <option value="link">下载链接失效</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="feedback-title">标题 <span class="required">*</span></label>
+                <input type="text" id="feedback-title" placeholder="简要描述你的问题或建议" required maxlength="100">
+            </div>
+
+            <div class="form-group">
+                <label for="feedback-content">详细内容 <span class="required">*</span></label>
+                <textarea id="feedback-content" placeholder="请详细描述你遇到的问题或建议..." required maxlength="5000"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="feedback-contact">联系方式 <span class="hint">（选填，方便我回复你）</span></label>
+                <input type="text" id="feedback-contact" placeholder="邮箱 / Telegram / QQ 等" maxlength="200">
+            </div>
+
+            <button type="submit" class="submit-btn">提交反馈</button>
+            <div id="form-message" class="form-message"></div>
+        </form>
+
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
+            <p style="color: #888; font-size: 0.85rem;">
+                💡 提示：反馈将通过 GitHub Issues 提交到仓库。如提交失败，你也可以直接前往 
+                <a href="#" target="_blank" style="color: #667eea;">GitHub Issues 页面</a> 提交。
+            </p>
+        </div>
+    </div>
+</div>

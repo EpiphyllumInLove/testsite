@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人汉化资源站 - 反馈</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-feedback">
+    <!-- 顶部导航栏 -->
+    <header class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="/">汉化资源站</a>
+            </div>
+            <nav class="nav-links">
+                <a href="/">介绍</a>
+                <a href="/works.html">作品</a>
+                <a href="/feedback.html" class="active">反馈</a>
+            </nav>
+            <button class="nav-toggle" onclick="toggleMenu()">☰</button>
+        </div>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="container">
+        <div class="feedback-section">
+            <div class="feedback-card">
+                <h1>提交反馈</h1>
+                <p class="subtitle">发现汉化问题或有建议？请填写下方表单，我会尽快处理。</p>
+
+                <form id="feedback-form">
+                    <div class="form-group">
+                        <label for="feedback-type">反馈类型 <span class="required">*</span></label>
+                        <select id="feedback-type" required>
+                            <option value="">请选择反馈类型</option>
+                            <option value="bug">汉化错误 / BUG</option>
+                            <option value="suggestion">功能建议</option>
+                            <option value="request">作品请求</option>
+                            <option value="link">下载链接失效</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-title">标题 <span class="required">*</span></label>
+                        <input type="text" id="feedback-title" placeholder="简要描述你的问题或建议" required maxlength="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-content">详细内容 <span class="required">*</span></label>
+                        <textarea id="feedback-content" placeholder="请详细描述你遇到的问题或建议..." required maxlength="5000"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-contact">联系方式 <span class="hint">（选填，方便我回复你）</span></label>
+                        <input type="text" id="feedback-contact" placeholder="邮箱 / Telegram / QQ 等" maxlength="200">
+                    </div>
+
+                    <button type="submit" class="submit-btn">提交反馈</button>
+                    <div id="form-message" class="form-message"></div>
+                </form>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
+                    <p style="color: #888; font-size: 0.85rem;">
+                        💡 反馈将通过 GitHub Issues 提交到仓库。你也可以直接访问 
+                        <a id="issues-link" href="#" target="_blank" style="color: #667eea;">GitHub Issues 页面</a> 提交。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 个人汉化资源站 | 由 Cloudflare Pages 强力驱动</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script>
+        function toggleMenu() {
+            document.querySelector('.nav-links').classList.toggle('show');
+        }
+
+        // 更新 Issues 链接
+        const issuesLink = document.getElementById('issues-link');
+        const issuesUrl = API.getIssuesUrl();
+        if (issuesUrl) {
+            issuesLink.href = issuesUrl;
+        }
+
+        // 反馈表单处理
+        const form = document.getElementById('feedback-form');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitBtn = form.querySelector('.submit-btn');
+                const messageDiv = document.getElementById('form-message');
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = '提交中...';
+                messageDiv.className = 'form-message';
+                messageDiv.style.display = 'none';
+
+                const formData = {
+                    type: document.getElementById('feedback-type').value,
+                    title: document.getElementById('feedback-title').value.trim(),
+                    content: document.getElementById('feedback-content').value.trim(),
+                    contact: document.getElementById('feedback-contact').value.trim(),
+                    timestamp: new Date().toISOString()
+                };
+
+                try {
+                    const result = await API.submitFeedback(formData);
+                    if (result.success) {
+                        messageDiv.className = 'form-message success';
+                        messageDiv.textContent = '✅ 反馈已成功提交到 GitHub Issues，感谢您的支持！';
+                        messageDiv.style.display = 'block';
+                        form.reset();
+                    } else {
+                        throw new Error(result.error || '提交失败');
+                    }
+                } catch (err) {
+                    messageDiv.className = 'form-message error';
+                    messageDiv.textContent = `提交失败：${err.message}。你也可以直接到 GitHub Issues 页面手动提交。`;
+                    messageDiv.style.display = 'block';
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '提交反馈';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
