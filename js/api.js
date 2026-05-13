@@ -9,7 +9,7 @@
 const GITHUB_CONFIG = {
     owner: 'EpiphyllumInLove',
     repo: 'testsite',
-    token: '__GITHUB_TOKEN__'
+    token: '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'
 };
 
 class FeedbackAPI {
