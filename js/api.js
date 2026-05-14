@@ -1,13 +1,13 @@
 class FeedbackAPI {
     constructor() {
-        // 这里的 URL 就是你刚刚部署好的 Worker 地址
-        this.workerUrl = 'feedback-proxy.minecraft2113367.workers.dev';
+        this.workerUrl = 'https://feedback-proxy.minecraft2113367.workers.dev'; 
     }
 
     async submitFeedback(formData) {
         try {
             const response = await fetch(this.workerUrl, {
                 method: 'POST',
+                mode: 'cors', 
                 headers: {
                     'Content-Type': 'application/json'
                 },
