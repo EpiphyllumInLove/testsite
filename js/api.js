@@ -1,11 +1,3 @@
-/**
- * 反馈提交 API
- *
- * Token 通过 Cloudflare Pages 构建变量注入：
- * 在 Cloudflare Dashboard 设置构建变量 GITHUB_TOKEN，
- * 构建命令会替换占位符 __GITHUB_TOKEN__ 为真实 Token。
- */
-
 const GITHUB_CONFIG = {
     owner: 'EpiphyllumInLove',
     repo: 'testsite',
