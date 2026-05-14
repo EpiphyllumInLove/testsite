@@ -1,5 +1,6 @@
 class FeedbackAPI {
     constructor() {
+        // 这里的 URL 就是你刚刚部署好的 Worker 地址
         this.workerUrl = 'feedback-proxy.minecraft2113367.workers.dev';
     }
 
