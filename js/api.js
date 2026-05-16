@@ -1,6 +1,6 @@
 class FeedbackAPI {
     constructor() {
-        this.workerUrl = 'https://feedback-proxy.minecraft2113367.workers.dev'; 
+        this.workerUrl = 'feedback-proxy.yousei.top'; 
     }
 
     async submitFeedback(formData) {
