@@ -61,7 +61,21 @@
                     <div id="form-message" class="form-message"></div>
                 </form>
 
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
+                <!-- 降级备用提交（Worker 失败时显示） -->
+                <div id="fallback-section" style="display: none; margin-top: 25px; padding-top: 20px; border-top: 2px solid #ff9800;">
+                    <h3 style="margin: 0 0 10px; font-size: 1.1rem;">🔄 备用提交方式</h3>
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 12px;">
+                        由于网络原因，无法直接连接提交服务器。请复制下方内容，手动提交：
+                    </p>
+
+                    <div style="margin-bottom: 10px;">
+                        <textarea id="fallback-text" readonly rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; resize: vertical; box-sizing: border-box; background: #f9f9f9;"></textarea>
+                        <button type="button" onclick="copyFallbackText()" style="margin-top: 8px; padding: 6px 18px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">📋 复制内容到剪贴板</button>
+                        <span id="copy-tip" style="margin-left: 10px; color: #4caf50; font-size: 0.8rem; display: none;">✓ 已复制！</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 22px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
                     <p style="color: #888; font-size: 0.85rem;">
                         💡 反馈将通过 GitHub Issues 提交到仓库。你也可以直接访问 
                         <a id="issues-link" href="#" target="_blank" style="color: #667eea;">GitHub Issues 页面</a> 提交。
@@ -84,25 +98,42 @@
             document.querySelector('.nav-links').classList.toggle('show');
         }
 
-        // 更新 Issues 链接
-        const issuesLink = document.getElementById('issues-link');
-        const issuesUrl = API.getIssuesUrl();
-        if (issuesUrl) {
-            issuesLink.href = issuesUrl;
+        function copyFallbackText() {
+            const textarea = document.getElementById('fallback-text');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                const tip = document.getElementById('copy-tip');
+                tip.style.display = 'inline';
+                setTimeout(() => { tip.style.display = 'none'; }, 2000);
+            }).catch(() => {
+                document.execCommand('copy');
+                const tip = document.getElementById('copy-tip');
+                tip.style.display = 'inline';
+                setTimeout(() => { tip.style.display = 'none'; }, 2000);
+            });
         }
 
-        // 反馈表单处理
+        // 页面加载：更新 Issues 链接
+        document.addEventListener('DOMContentLoaded', function() {
+            const issuesLink = document.getElementById('issues-link');
+            issuesLink.href = API.getIssuesUrl();
+        });
+
+        // 反馈表单提交
         const form = document.getElementById('feedback-form');
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const submitBtn = form.querySelector('.submit-btn');
                 const messageDiv = document.getElementById('form-message');
+                const fallbackSection = document.getElementById('fallback-section');
 
                 submitBtn.disabled = true;
                 submitBtn.textContent = '提交中...';
                 messageDiv.className = 'form-message';
                 messageDiv.style.display = 'none';
+                fallbackSection.style.display = 'none';
 
                 const formData = {
                     type: document.getElementById('feedback-type').value,
@@ -114,17 +145,28 @@
 
                 try {
                     const result = await API.submitFeedback(formData);
+
                     if (result.success) {
                         messageDiv.className = 'form-message success';
                         messageDiv.textContent = '✅ 反馈已成功提交到 GitHub Issues，感谢您的支持！';
+                        if (result.html_url) {
+                            messageDiv.innerHTML += '<br><a href="' + result.html_url + '" target="_blank" style="color:#fff;text-decoration:underline;">查看你的 Issue</a>';
+                        }
                         messageDiv.style.display = 'block';
                         form.reset();
+                    } else if (result.fallback) {
+                        messageDiv.className = 'form-message warning';
+                        messageDiv.textContent = result.error || '无法直接提交，请使用下方备用方式手动提交。';
+                        messageDiv.style.display = 'block';
+
+                        document.getElementById('fallback-text').value = result.copyText;
+                        fallbackSection.style.display = 'block';
                     } else {
                         throw new Error(result.error || '提交失败');
                     }
                 } catch (err) {
                     messageDiv.className = 'form-message error';
-                    messageDiv.textContent = `提交失败：${err.message}。你也可以直接到 GitHub Issues 页面手动提交。`;
+                    messageDiv.textContent = '❌ 提交失败：' + err.message;
                     messageDiv.style.display = 'block';
                 } finally {
                     submitBtn.disabled = false;

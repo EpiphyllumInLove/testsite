@@ -515,9 +515,17 @@ body {
 }
 
 .form-message.error {
-    display: block;
-    background: #fce4ec;
-    color: #c62828;
+display: block;
+background: #fce4ec;
+color: #c62828;
+}
+
+.form-message.warning {
+display: block;
+background: #fff3e0;
+color: #e65100;
+border: 1px solid #ffe0b2;
+}
     border: 1px solid #f8bbd0;
 }
 
