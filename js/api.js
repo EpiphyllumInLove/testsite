@@ -8,9 +8,9 @@ class FeedbackAPI {
         // ====== 配置区 ======
         // 你的 Worker 地址（可以配置多个，按优先级自动切换）
         this.workerUrls = [
-            'feedback-proxy.minecraft2113367.workers.dev', // workers.dev 通道
+            'https://feedback-proxy.minecraft2113367.workers.dev', // workers.dev 通道
             // 绑定自定义域名后加在这里（国内访问更稳定）:
-            // 'feedback-proxy.yousei.top',
+            // 'https://feedback-proxy.yousei.top',
         ];
 
         this.owner = 'EpiphyllumInLove';
