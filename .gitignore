@@ -41,3 +41,6 @@ logs/
 # Project specific
 *.tmp
 *.temp
+
+.backup
+.operit
